@@ -7,7 +7,7 @@ on:
 
 jobs:
 
-  # 🔍 JOB 1: Code Quality
+  # 🔍 JOB 1: Code Quality (SonarQube for Node.js)
   code-quality:
     runs-on: ubuntu-latest
 
@@ -15,28 +15,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Build Project
-        run: mvn clean verify
-
-      - name: SonarQube Scan
+      - name: Install SonarScanner
         run: |
-          mvn sonar:sonar \
+          sudo apt-get update
+          sudo apt-get install -y unzip curl
+          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-5.0.1.3006-linux.zip
+          unzip sonar-scanner.zip
+          sudo mv sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner
+          echo "/opt/sonar-scanner/bin" >> $GITHUB_PATH
+
+      - name: Run SonarQube Scan
+        run: |
+          sonar-scanner \
             -Dsonar.projectKey=hospital-actions \
+            -Dsonar.sources=. \
             -Dsonar.host.url=http://<http://3.110.215.115/>:9000 \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
 
-  # 🐳 JOB 2: Your original pipeline (slightly improved)
+
+  # 🐳 JOB 2: Build + Scan + Push
   build-and-scan:
     runs-on: ubuntu-latest
-    needs: code-quality   # 🔥 IMPORTANT
+    needs: code-quality   # 🔥 ensures quality passes first
 
     env:
       IMAGE_NAME: hospital-actions
