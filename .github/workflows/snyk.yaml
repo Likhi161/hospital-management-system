@@ -1,0 +1,100 @@
+name: DevSecOps Pipeline - Hospital System
+
+on:
+  push:
+    branches: [ "main", "deploying" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3️⃣ Install dependencies
+      - name: Install Dependencies
+        run: npm install
+        working-directory: backend
+
+      # =========================
+      # 🔐 SNYK SCAN
+      # =========================
+
+      - name: Install Snyk
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
+        run: snyk test
+        working-directory: backend
+
+      # =========================
+      # 🔍 SONARQUBE SCAN
+      # =========================
+
+      - name: Install SonarScanner
+        run: npm install -g sonarqube-scanner
+
+      - name: Run SonarQube Scan
+        run: |
+          sonar-scanner \
+          -Dsonar.projectKey=hospital-management-system \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.qualitygate.wait=true
+
+      # =========================
+      # 📧 EMAIL NOTIFICATIONS
+      # =========================
+
+      - name: Send Success Email ✅
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ DevSecOps Pipeline Passed"
+          body: |
+            ✅ Pipeline SUCCESS
+
+            ✔ Snyk Scan: No vulnerabilities
+            ✔ SonarQube: Quality Gate Passed
+
+            Safe to deploy 🚀
+          to: b.likhitha161@gmail.com
+          from: GitHub Actions
+
+      - name: Send Failure Email ❌
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ DevSecOps Pipeline Failed"
+          body: |
+            ❌ Pipeline FAILED
+
+            Possible reasons:
+            - Snyk detected vulnerabilities
+            - SonarQube Quality Gate failed
+
+            Check logs immediately!
+          to: b.likhitha161@gmail.com
+          from: GitHub Actions
