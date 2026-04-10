@@ -1,0 +1,81 @@
+name: SonarQube Scan - Hospital Management System
+
+on:
+  push:
+    branches: [ "main", "deploying" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3️⃣ Install dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # 4️⃣ Install SonarScanner
+      - name: Install SonarScanner
+        run: |
+          npm install -g sonarqube-scanner
+
+      # 5️⃣ Run SonarQube Scan
+      - name: Run SonarQube Scan
+        run: |
+          sonar-scanner \
+          -Dsonar.projectKey=hospital-management-system \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.qualitygate.wait=true
+
+      # 6️⃣ Success Email ✅
+      - name: Send Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ SonarQube Passed - Hospital Project"
+          body: |
+            SonarQube Quality Gate PASSED ✅
+            
+            Project: Hospital Management System
+            Status: Clean (No critical vulnerabilities)
+            
+            You can proceed with deployment.
+          to: b.likhitha161@gmail.com
+          from: GitHub Actions
+
+      # 7️⃣ Failure Email ❌
+      - name: Send Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ SonarQube Failed - Hospital Project"
+          body: |
+            SonarQube Quality Gate FAILED ❌
+            
+            Vulnerabilities / Bugs detected.
+            Please fix before merging or deploying.
+            
+            Check SonarQube dashboard for details.
+          to: b.likhitha161@gmail.com
+          from: GitHub Actions
