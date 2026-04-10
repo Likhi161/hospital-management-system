@@ -2,9 +2,9 @@ name: SonarQube Scan - Hospital Management System
 
 on:
   push:
-    branches: [ "main", "deploying" ]
+    branches: [ "master", "deploying" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   sonar:
